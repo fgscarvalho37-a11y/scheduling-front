@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Scheduling System</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0f0f13;color:#e8e8f0;font-family:'Segoe UI',sans-serif;min-height:100vh}
+header{background:#1a1a2e;padding:20px 32px;border-bottom:1px solid #2a2a35;display:flex;align-items:center;justify-content:space-between}
+header h1{font-size:1.4rem;font-weight:700;color:#7c6fff}
+header span{font-size:.85rem;color:#6b6b80}
+.container{padding:32px;max-width:1200px;margin:0 auto}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:16px;margin-bottom:32px}
+.card{background:#18181f;border:1px solid #2a2a35;border-radius:10px;padding:20px;transition:border-color .2s;text-align:center}
+.card:hover{border-color:#7c6fff}
+.card .label{font-size:.75rem;color:#6b6b80;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px}
+.card .value{font-size:2rem;font-weight:700}
+.pending{color:#ffd080}.confirmed{color:#00e5a0}.cancelled{color:#ff6b6b}.completed{color:#7c6fff}.total{color:#61dafb}
+.form-box{background:#18181f;border:1px solid #2a2a35;border-radius:10px;padding:24px;margin-bottom:32px}
+.form-box h2{font-size:.95rem;font-weight:700;margin-bottom:16px;color:#e8e8f0}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.form-grid input,.form-grid select,.form-grid textarea{background:#0f0f13;border:1px solid #2a2a35;border-radius:6px;padding:10px 12px;color:#e8e8f0;font-size:.88rem;outline:none;width:100%;transition:border-color .2s;font-family:'Segoe UI',sans-serif}
+.form-grid input:focus,.form-grid select:focus,.form-grid textarea:focus{border-color:#7c6fff}
+.form-grid textarea{resize:none;height:80px}
+.btn{background:#7c6fff;color:#fff;border:none;padding:10px 24px;border-radius:6px;font-weight:700;cursor:pointer;font-size:.88rem;transition:background .2s;margin-top:12px}
+.btn:hover{background:#9d8fff}
+.filters{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;align-items:center}
+.filters select{background:#18181f;border:1px solid #2a2a35;border-radius:6px;padding:8px 12px;color:#e8e8f0;font-size:.85rem;outline:none;transition:border-color .2s}
+.filters select:focus{border-color:#7c6fff}
+.filters label{font-size:.85rem;color:#6b6b80}
+.table-box{background:#18181f;border:1px solid #2a2a35;border-radius:10px;overflow:hidden}
+.table-box h2{font-size:.95rem;font-weight:700;padding:20px;border-bottom:1px solid #2a2a35}
+table{width:100%;border-collapse:collapse}
+th,td{padding:12px 20px;text-align:left;font-size:.85rem}
+th{color:#6b6b80;text-transform:uppercase;font-size:.72rem;letter-spacing:.08em;border-bottom:1px solid #2a2a35}
+tr:hover td{background:#1f1f28}
+.badge{padding:3px 10px;border-radius:12px;font-size:.72rem;font-weight:700}
+.badge-PENDING{background:rgba(255,208,128,.1);color:#ffd080}
+.badge-CONFIRMED{background:rgba(0,229,160,.1);color:#00e5a0}
+.badge-CANCELLED{background:rgba(255,107,107,.1);color:#ff6b6b}
+.badge-COMPLETED{background:rgba(124,111,255,.1);color:#7c6fff}
+.actions{display:flex;gap:6px}
+.action-btn{background:none;border:1px solid #2a2a35;color:#e8e8f0;cursor:pointer;font-size:.75rem;padding:4px 10px;border-radius:4px;transition:all .2s}
+.action-btn:hover{border-color:#7c6fff;color:#7c6fff}
+.action-btn.del{border-color:#ff6b6b33;color:#ff6b6b}
+.action-btn.del:hover{background:rgba(255,107,107,.1)}
+</style>
+</head>
+<body>
+<header>
+  <h1>📅 Scheduling System</h1>
+  <span id="last-update">Carregando...</span>
+</header>
+<div class="container">
+
+  <div class="cards">
+    <div class="card"><div class="label">Total</div><div class="value total" id="c-total">—</div></div>
+    <div class="card"><div class="label">Pendentes</div><div class="value pending" id="c-pending">—</div></div>
+    <div class="card"><div class="label">Confirmados</div><div class="value confirmed" id="c-confirmed">—</div></div>
+    <div class="card"><div class="label">Cancelados</div><div class="value cancelled" id="c-cancelled">—</div></div>
+    <div class="card"><div class="label">Concluídos</div><div class="value completed" id="c-completed">—</div></div>
+  </div>
+
+  <div class="form-box">
+    <h2>➕ Novo Agendamento</h2>
+    <div class="form-grid">
+      <input id="f-name" placeholder="Nome do cliente"/>
+      <input id="f-email" type="email" placeholder="Email do cliente"/>
+      <select id="f-service">
+        <option value="">Serviço</option>
+        <option>Consulta</option>
+        <option>Retorno</option>
+        <option>Exame</option>
+        <option>Procedimento</option>
+        <option>Avaliação</option>
+      </select>
+      <input id="f-date" type="date"/>
+      <input id="f-time" type="time"/>
+      <textarea id="f-notes" placeholder="Observações (opcional)"></textarea>
+    </div>
+    <button class="btn" onclick="createAppointment()">Agendar</button>
+  </div>
+
+  <div class="filters">
+    <label>Filtrar por status:</label>
+    <select id="filter-status" onchange="loadAppointments()">
+      <option value="">Todos</option>
+      <option value="PENDING">Pendentes</option>
+      <option value="CONFIRMED">Confirmados</option>
+      <option value="CANCELLED">Cancelados</option>
+      <option value="COMPLETED">Concluídos</option>
+    </select>
+  </div>
+
+  <div class="table-box">
+    <h2>📋 Agendamentos</h2>
+    <table>
+      <thead><tr><th>#</th><th>Cliente</th><th>Serviço</th><th>Data</th><th>Hora</th><th>Status</th><th>Ações</th></tr></thead>
+      <tbody id="appointments-table"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+const API = 'http://localhost:8083/api/appointments';
+
+async function loadSummary() {
+  const s = await fetch(API+'/summary').then(r=>r.json());
+  document.getElementById('c-total').textContent = s.total;
+  document.getElementById('c-pending').textContent = s.pending;
+  document.getElementById('c-confirmed').textContent = s.confirmed;
+  document.getElementById('c-cancelled').textContent = s.cancelled;
+  document.getElementById('c-completed').textContent = s.completed;
+}
+
+async function loadAppointments() {
+  const status = document.getElementById('filter-status').value;
+  const url = status ? `${API}/status/${status}` : API;
+  const data = await fetch(url).then(r=>r.json());
+  document.getElementById('appointments-table').innerHTML = data.map(a => `
+    <tr>
+      <td>#${a.id}</td>
+      <td><b>${a.clientName}</b><br><span style="color:#6b6b80;font-size:.78rem">${a.clientEmail}</span></td>
+      <td>${a.service}</td>
+      <td>${a.date}</td>
+      <td>${a.time}</td>
+      <td><span class="badge badge-${a.status}">${a.status}</span></td>
+      <td>
+        <div class="actions">
+          <button class="action-btn" onclick="updateStatus(${a.id},'CONFIRMED')">✓</button>
+          <button class="action-btn" onclick="updateStatus(${a.id},'COMPLETED')">★</button>
+          <button class="action-btn" onclick="updateStatus(${a.id},'CANCELLED')">✗</button>
+          <button class="action-btn del" onclick="deleteAppointment(${a.id})">🗑</button>
+        </div>
+      </td>
+    </tr>`).join('');
+  document.getElementById('last-update').textContent = 'Atualizado: '+new Date().toLocaleTimeString();
+}
+
+async function createAppointment() {
+  const clientName = document.getElementById('f-name').value;
+  const clientEmail = document.getElementById('f-email').value;
+  const service = document.getElementById('f-service').value;
+  const date = document.getElementById('f-date').value;
+  const time = document.getElementById('f-time').value + ':00';
+  const notes = document.getElementById('f-notes').value;
+  if(!clientName||!clientEmail||!service||!date||!time){alert('Preencha todos os campos!');return;}
+  await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({clientName,clientEmail,service,date,time,notes})});
+  document.getElementById('f-name').value='';
+  document.getElementById('f-email').value='';
+  document.getElementById('f-notes').value='';
+  load();
+}
+
+async function updateStatus(id, status) {
+  await fetch(`${API}/${id}/status?status=${status}`,{method:'PATCH'});
+  load();
+}
+
+async function deleteAppointment(id) {
+  await fetch(`${API}/${id}`,{method:'DELETE'});
+  load();
+}
+
+async function load() {
+  await Promise.all([loadSummary(), loadAppointments()]);
+}
+
+load();
+setInterval(load, 30000);
+</script>
+</body>
+</html>
